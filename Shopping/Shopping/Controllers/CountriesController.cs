@@ -41,6 +41,24 @@ namespace Shopping.Controllers
             return View(country);
         }
 
+        public async Task<IActionResult> DetailsState(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            State state = await _context.States
+                .Include(s => s.Cities)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (state == null)
+            {
+                return NotFound();
+            }
+
+            return View(state);
+        }
+
         public IActionResult Create()
         {
             Country country = new Country() { States = new List<State>() };
@@ -137,6 +155,64 @@ namespace Shopping.Controllers
             return View(model);
         }
 
+        public async Task<IActionResult> AddCity(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            State state = await _context.States.FindAsync(id);
+            if (state == null)
+            {
+                return NotFound();
+            }
+
+            CityViewModel model = new()
+            {
+                StateId = state.Id,
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddCity(CityViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    City city = new City()
+                    {
+                        State = await _context.States.FindAsync(model.StateId),
+                        Name = model.Name,
+                    };
+                    _context.Add(city);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(DetailsState), new { Id = model.StateId });
+                }
+                catch (DbUpdateException dbUpdateException)
+                {
+                    if (dbUpdateException.InnerException.Message.Contains("duplicate"))
+                    {
+                        ModelState.AddModelError(string.Empty, "Ya existe una ciudad " +
+                            "con el mismo nombre en este departameno/estado");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, dbUpdateException.InnerException.Message);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    ModelState.AddModelError(string.Empty, exception.Message);
+                }
+            }
+            return View(model);
+        }
+
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -144,11 +220,14 @@ namespace Shopping.Controllers
                 return NotFound();
             }
 
-            Country country = await _context.Countries.FindAsync(id);
+            Country country = await _context.Countries
+                .Include(c => c.States)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (country == null)
             {
                 return NotFound();
             }
+
             return View(country);
         }
 
