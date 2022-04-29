@@ -32,6 +32,7 @@ namespace Shopping.Controllers
 
             Country country = await _context.Countries
                 .Include(c => c.States)
+                .ThenInclude(s => s.Cities)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (country == null)
             {
@@ -49,6 +50,7 @@ namespace Shopping.Controllers
             }
 
             State state = await _context.States
+                .Include(s => s.Country)
                 .Include(s => s.Cities)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (state == null)
